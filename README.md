@@ -29,9 +29,9 @@ In case of error (e.g. illegal command, non-existing file) the server always rep
 ## Compilation commands
 
 ```
-gcc -std=gnu99 -o server server1/\*.c \*.c -Iserver1 -lpthread -lm
-gcc -std=gnu99 -o client client1/\*.c \*.c -Iclient1 -lpthread -lm
-gcc -std=gnu99 -o concurrent_server server2/\*.c \*.c -Iserver2 -lpthread -lm
+gcc -std=gnu99 -o server server1/*.c *.c -Iserver1 -lpthread -lm
+gcc -std=gnu99 -o client client1/*.c *.c -Iclient1 -lpthread -lm
+gcc -std=gnu99 -o concurrent_server server2/*.c *.c -Iserver2 -lpthread -lm
 ```
 
 ## Proposed solution
