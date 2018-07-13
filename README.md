@@ -41,6 +41,16 @@ LIBNETFILE
   where you will get that file and where it has to be saved in the local file system.
   a NETCOMM is a structure to manage protocol messages before and after the start of the file transfer.
 
+```
+sequential_server	--- 
+			       	  |
+			       	  v
+  				       -----> server_core <---> libnetfile <---> client
+				   	  ^
+				   	  |
+concurrent_server	---
+```
+
 ## Example usage
 
 see server and client implementation
