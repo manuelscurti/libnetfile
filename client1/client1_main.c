@@ -15,16 +15,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
-#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+
 #include "../sockwrap.h"
 #include "../errlib.h"
 #include "../libnetfile.h"
 
-#define BUFSIZE 4096
-#define REQMSG_LEN 6
 #define FILENAMELEN 256
-#define CLOSESTRING "QUIT\r\n"
-#define TIMER_VAL 2
+#define TIMER_VAL 75
 
 
 char *prog_name;
@@ -32,7 +31,6 @@ char *prog_name;
 int connect_to(char *ip, char *portnum);
 int receive_file(int skt, char *filename);
 int make_request(int skt, char *filename);
-void close_link(int skt);
 
 int main (int argc, char *argv[])
 {
@@ -52,8 +50,14 @@ int main (int argc, char *argv[])
 	/* CONNECTION PHASE */
 	printf("Connecting to %s:%s\n",argv[1],argv[2]);
 	link = connect_to(argv[1],argv[2]); //error messages and behaviours are handled by errlib
-	printf("Connected.\n");
+	if(link <= 0){
+		printf("Connection timeout. (TIMER LENGTH: %d)\n",TIMER_VAL);
+		exit(1);
+	}
+	else
+		printf("Connected.\n");
 
+	int flag_err = 0;
 
 	/* REQUEST PHASE */
 	while(i < argc)
@@ -61,15 +65,22 @@ int main (int argc, char *argv[])
 		outcome = receive_file(link, argv[i]);
 		if(outcome != -1)
 			completed++;
-		else printf("File \"%s\" skipped.\n",argv[i]);
+		else {
+			flag_err = 1;
+			printf("File \"%s\" skipped.\n",argv[i]);
+			break;
+		}
 		i++;
 	}
 
 
 	printf("Completed %d/%d file requests.\n", completed, to_download);
 	printf("Shutting down connection...\n");
-	close_link(link);
-
+	//close socket and connection
+	if(flag_err != 1)
+		netfile_send_msg(link,QUIT_MSG,NULL);
+	
+	close(link);
 	printf("Bye!\n");
 	return 0;
 }
@@ -96,7 +107,25 @@ int connect_to(char *ip, char *portnum)
 	saddr.sin_port = port_n;
 	saddr.sin_addr = server_ip;
 
-	Connect(s, (struct sockaddr *) &saddr, sizeof(saddr));
+	// setup a timeout value for the connection operation
+	fd_set cset;
+    struct timeval tval;
+    tval.tv_sec = TIMER_VAL;
+    tval.tv_usec = 0;
+
+    int ret;
+	FD_ZERO(&cset);
+	FD_SET(s, &cset);
+	 
+	fcntl(s, F_SETFL, O_NONBLOCK); //add non blocking option for the connect operation
+	 
+	if ((ret = connect (s, (struct sockaddr *) &saddr, sizeof(saddr))) == -1)
+	  if ( errno != EINPROGRESS )
+	    return -1;
+	 
+	ret = select(s+1, NULL, &cset, NULL, &tval);
+	if(ret <= 0)
+		return -1; //timeout
 
 	return s;
 }
@@ -105,6 +134,10 @@ int receive_file(int skt, char *filename)
 {
 	FILE *fp;
     netcomm_t inbox = netfile_inbox_init(FILENAMELEN); /* create an inbox for protocol messages */
+	if(inbox == NULL){
+		printf("Error while creating netcomm inbox.\n");
+		return -1;
+	}
 
 	if((fp = fopen(filename,"w")) == NULL){
 		printf("Unable to create file.\n");
@@ -126,15 +159,21 @@ int receive_file(int skt, char *filename)
 	netfile_inbox_disable_timer(&inbox);
 
 	netfile_t userfile = netfile_init(skt,fp); /* create a container for the file */
+	if(userfile == NULL){
+		printf("Error while creating netfile descriptor.\n");
+		return -1;
+	}
 
+	printf("Receiving...\n");
 	netfile_enable_timer(&userfile, TIMER_VAL);
 	if(netfile_recv(&userfile,BUFSIZE) == -1){
 		printf("Error while receiving file.\n");
+		printf("STATUS: %s\n",netfile_error_info(userfile));
 		return -1;
 	}
-	netfile_disable_timer(&userfile); //not strictly needed
+	netfile_disable_timer(&userfile); //not strictly needed. see documentation on timers
 
-    printf("err status: %s\n",netfile_error_info(userfile));
+    printf("STATUS: %s\n",netfile_error_info(userfile));
     printf("FILE SIZE: %"PRIu32"\n",netfile_get_size(userfile));
     printf("FILE TIMESTAMP: %"PRIu32"\n",netfile_get_timestamp(userfile));
 
@@ -143,10 +182,4 @@ int receive_file(int skt, char *filename)
     netfile_inbox_close(inbox);
 
     return 0;
-}
-
-void close_link(int skt)
-{
-	netfile_send_msg(skt,QUIT_MSG,NULL);
-	close(skt);
 }
