@@ -1,8 +1,0 @@
-Macro: int BUFSIZ
-The value of this macro is an integer constant expression that is good to use for the size argument to setvbuf. This value is guaranteed to be at least 256.
-
-The value of BUFSIZ is chosen on each system so as to make stream I/O efficient. So it is a good idea to use BUFSIZ as the size for the buffer when you call setvbuf.
-
-Actually, you can get an even better value to use for the buffer size by means of the fstat system call: it is found in the st_blksize field of the file attributes. See section 14.9.1 The meaning of the File Attributes.
-
-Sometimes people also use BUFSIZ as the allocation size of buffers used for related purposes, such as strings used to receive a line of input with fgets (see section 12.8 Character Input). There is no particular reason to use BUFSIZ for this instead of any other integer, except that it might lead to doing I/O in chunks of an efficient size. 
