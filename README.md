@@ -37,18 +37,10 @@ gcc -std=gnu99 -o concurrent_server server2/*.c *.c -Iserver2 -lpthread -lm
 ## Proposed solution
 
 LIBNETFILE
-  a NETFILE is a file descriptor associated with a socket. with this library you define a NETFILE to declare
-  where you will get that file and where it has to be saved in the local file system.
-  a NETCOMM is a structure to manage protocol messages before and after the start of the file transfer.
+a NETFILE is a file descriptor associated with a socket. with this library you define a NETFILE to declare where you will get that file and where it has to be saved in the local file system. a NETCOMM is a structure to manage protocol messages before and after the start of the file transfer.
 
 ```
-sequential_server	--- 
-			       	  |
-			       	  v
-  				       -----> server_core <---> libnetfile <---> client
-				   	  ^
-				   	  |
-concurrent_server	---
+sequential_server/concurrent_server <------> server_core <------> libnetfile <------> client
 ```
 
 ## Example usage
