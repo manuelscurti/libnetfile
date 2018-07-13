@@ -42,4 +42,5 @@ LIBNETFILE
   a NETCOMM is a structure to manage protocol messages before and after the start of the file transfer.
 
 ## Example usage
-	see server and client implementation
+
+see server and client implementation
